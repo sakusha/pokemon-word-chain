@@ -11,7 +11,13 @@ import sys
 def say(text, sox_effects=None):
     Speech(text, 'ja').play(sox_effects)
 
+'''
+    Word chain game
+'''
 class WordChain:
+    '''
+        builds words dictionary and required files
+    '''
     def __init__(self, assistant, words_file):
         self.assistant = assistant
 
@@ -28,6 +34,9 @@ class WordChain:
 
         self._load_words(words_file)
 
+    '''
+        load mappings for the long sound
+    '''
     def _load_gojuon(self):
         with open('../data/gojuon.txt', 'r') as input:
             for line in input:
@@ -37,12 +46,18 @@ class WordChain:
                 for char in chars:
                     self.jap_base[char]=base
 
+    '''
+        load mappings for small kanakana
+    '''
     def _load_combination(self):
         with open('../data/combination.txt', 'r') as input:
             for line in input:
                 chars = line.strip().split(',')
                 self.jap_comb[chars[0]]=chars[1]
 
+    '''
+        load words
+    '''
     def _load_words(self, file):
         cnt = 0
         ptn = re.compile(r"([・：]|\(.*?\))")
@@ -55,9 +70,13 @@ class WordChain:
                 self.words[name] = word_tuple
                 self.dict[name[0]].append(name)
                 cnt += 1
-                print(name, name[0], name[-1])
+                #print(name, name[0], name[-1])
         print(len(self.words), cnt)
 
+    '''
+        find the last character from the given word
+        it checks long sound symbol and small katakana
+    '''
     def get_last_char(self, word):
         last = word[-1]
         if last == 'ー':
@@ -68,14 +87,14 @@ class WordChain:
 
         return last
 
+    '''
+        checks if the given word meets the word chain requirements.
+        If the given word is not used, then mark it as used.
+        Also, get the expected character for the next turn.
+    '''
     def check(self, word):
         if not word:
             return(False, 'もう使える物がないですね。')
-
-        if self.expected_char:
-            print('current=('+self.expected_char+')')
-        else:
-            print('current=()')
 
         if self.expected_char and word[0] != self.expected_char:
             return (False, '正しくないです。')
@@ -85,11 +104,13 @@ class WordChain:
         
         if not word in self.words:
             return (False, 'ポケモンの名前ではありません。')
+
         if word[-1] == 'ん' or word[-1] == 'ン':
             return (False, 'ンが付いてます。')
         
         self.used_words[word] = self.words[word]
         del self.words[word]
+
         idx = 0
         list = self.dict[word[0]]
         for x in list:
@@ -99,10 +120,13 @@ class WordChain:
             idx +=1 
 
         self.expected_char=self.get_last_char(word)
-        print('new=('+self.expected_char+')')
 
         return (True, 'なかなかですね。')
 
+    '''
+        pick a word based on the given word from user
+        It doesn't check if picked word is ended with 'ン'
+    '''
     def pick_a_word(self, word):
         if len(self.words) == 0:
             return None
@@ -113,12 +137,15 @@ class WordChain:
         if len(candidate) == 0:
             return None
 
-        x = random.randint(0,len(candidate))
+        x = random.randint(0,len(candidate)-1)
         pick = candidate[x]
 
         return pick
         
 
+'''
+    Entry point for the word chain game
+'''
 def my_actions(assistant, event, device_id):
     text = event.args['text'].lower()
     print(text)
@@ -136,14 +163,22 @@ def my_actions(assistant, event, device_id):
         if len(pokemon_tuple) > 1:
             print(pokemon_tuple[1])
             say(pokemon_tuple[1]+'ですね。')
+            '''
+                 speaker's turn
+            '''
         else:
             say('私の勝ちです。うははは。')
 
+'''
+    for the test
+'''
 def test_pokemon():
     word_chain = WordChain( None, '../data/pokemon-name.txt')
     
+    # user input
     test_word = input('Enter pokemon name: ')
     
+    # exit condition
     inGame = True
     while inGame:
         result = word_chain.check(test_word)
@@ -165,6 +200,7 @@ def test_pokemon():
             continue
 
         test_word = input('Enter pokemon name: ')
+        # user typed nothing 
         if not test_word:
             inGame = False
 
