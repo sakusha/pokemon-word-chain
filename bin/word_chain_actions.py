@@ -5,6 +5,7 @@ from google_speech import Speech
 from google.assistant.library import Assistant
 
 import random
+import re
 import sys
 
 def say(text, sox_effects=None):
@@ -15,6 +16,7 @@ class WordChain:
         self.assistant = assistant
 
         self.jap_base = dict()
+        self.jap_comb = dict()
 
         self.words = dict()
         self.dict = defaultdict(list)
@@ -39,25 +41,45 @@ class WordChain:
         with open('../data/combination.txt', 'r') as input:
             for line in input:
                 chars = line.strip().split(',')
-                self.jap_base[chars[0]]=chars[1]
+                self.jap_comb[chars[0]]=chars[1]
 
     def _load_words(self, file):
         cnt = 0
+        ptn = re.compile(r"([・：]|\(.*?\))")
         with open(file, 'r') as input:
             for line in input:
                 word_tuple = line.strip().split(',')
                 name = word_tuple[1]
                 word_tuple.pop(1)
+                name = ptn.sub('', name).strip()
                 self.words[name] = word_tuple
                 self.dict[name[0]].append(name)
                 cnt += 1
-                #print(name, name[0], name[-1])
+                print(name, name[0], name[-1])
         print(len(self.words), cnt)
+
+    def get_last_char(self, word):
+        last = word[-1]
+        if last == 'ー':
+            last = self.jap_base[word[-2]]
+
+        if last in self.jap_comb:
+            last=self.jap_comb[last]
+
+        return last
 
     def check(self, word):
         if not word:
             return(False, 'もう使える物がないですね。')
 
+        if self.expected_char:
+            print('current=('+self.expected_char+')')
+        else:
+            print('current=()')
+
+        if self.expected_char and word[0] != self.expected_char:
+            return (False, '正しくないです。')
+        
         if word in self.used_words:
             return (False, '既に使ったのですよ。')
         
@@ -76,13 +98,10 @@ class WordChain:
                 break
             idx +=1 
 
-        return (True, 'なかなかですね。')
+        self.expected_char=self.get_last_char(word)
+        print('new=('+self.expected_char+')')
 
-    def get_last_char(self.word):
-        last = word[-1]
-        if last == 'ー':
-            last = word[-2]
-        return last
+        return (True, 'なかなかですね。')
 
     def pick_a_word(self, word):
         if len(self.words) == 0:
@@ -90,17 +109,12 @@ class WordChain:
 
         last = self.get_last_char(word)
 
-        if last in self.jap_base:
-            last = self.jap_base[last]
-        
         candidate = self.dict[last]
         if len(candidate) == 0:
             return None
 
         x = random.randint(0,len(candidate))
         pick = candidate[x]
-
-        self.expected_char=self.get_last_char(pick)
 
         return pick
         
@@ -125,7 +139,7 @@ def my_actions(assistant, event, device_id):
         else:
             say('私の勝ちです。うははは。')
 
-def read_pokemon():
+def test_pokemon():
     word_chain = WordChain( None, '../data/pokemon-name.txt')
     
     test_word = input('Enter pokemon name: ')
@@ -142,6 +156,7 @@ def read_pokemon():
         print(result)
 
         word = word_chain.pick_a_word(test_word)
+
         print(word)
         result=word_chain.check(word)
         if not result[0]:
@@ -154,4 +169,4 @@ def read_pokemon():
             inGame = False
 
 if __name__ == '__main__':
-    read_pokemon()
+    test_pokemon()
