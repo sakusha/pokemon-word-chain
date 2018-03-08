@@ -7,9 +7,11 @@ from google.assistant.library import Assistant
 import random
 import re
 import sys
+import time
 
 def say(text, sox_effects=None):
     Speech(text, 'ja').play(sox_effects)
+    time.sleep( .5 )
 
 '''
     Word chain game
@@ -47,7 +49,7 @@ class WordChain:
                     self.jap_base[char]=base
 
     '''
-        load mappings for small kanakana
+        load mappings for small katakana
     '''
     def _load_combination(self):
         with open('../data/combination.txt', 'r') as input:
@@ -106,7 +108,7 @@ class WordChain:
             return (False, 'ポケモンの名前ではありません。')
 
         if word[-1] == 'ん' or word[-1] == 'ン':
-            return (False, 'ンが付いてます。')
+            return (False, 'ウンが付いてます。')
         
         self.used_words[word] = self.words[word]
         del self.words[word]
@@ -146,29 +148,82 @@ class WordChain:
 '''
     Entry point for the word chain game
 '''
+game = None
+
 def my_actions(assistant, event, device_id):
     text = event.args['text'].lower()
     print(text)
 
+    global game
+
     if 'ポケモンしりとり' in text:
         assistant.stop_conversation()
-        print(text+' start')
+        if game:
+            say('既にゲームは始まってますよ。')
+            return
+
+        game = WordChain(assistant, '../data/pokemon-name.txt')
+        say('じゃあ、私から始めます。')
+
+        words = list(game.words.keys())
+        x = random.randint(0,len(words)-1)
+        pick = words[x]
+        say(pick)
+        result=game.check(pick)
+        if not result[0]:
+            game = None
+            say(result[1]+'貴方の勝ちです。おめでとうございます！')
+            return
+
+        say('では、貴方のターンです。')
+
     elif 'ポケモンの名前' in text:
         assistant.stop_conversation()
-        print(text+' start')
         read_pokemon()
+
     elif '私のターン' in text:
         assistant.stop_conversation()
-        pokemon_tuple = text.strip().split(' ')
-        if len(pokemon_tuple) > 1:
-            print(pokemon_tuple[1])
-            say(pokemon_tuple[1]+'ですね。')
-            '''
-                 speaker's turn
-            '''
-        else:
-            say('私の勝ちです。うははは。')
+        words = text.strip().split(' ')
 
+        if not '私のターン' in words[0]:
+            say('どういう事ですか？')
+            return
+
+        if not game:
+            say('ゲームは始まってませんよ。')
+            return
+
+        #pokemon_tuple = text.strip().split(' ')
+        if len(words) <= 1:
+            game = None
+            say('何も言ってないです。それじゃ～、私の勝ちです。うははは。')
+            return
+
+        print(words[1])
+        say(words[1]+'ですね。')
+
+        '''
+                 speaker's turn
+        '''
+        result=game.check(words[1])
+        if not result[0]:
+            game = None
+            say(result[1]+'それじゃ～、私の勝ちです。うははは。')
+            return
+
+        say(result[1]+'では、私のターンです。')
+
+        word = game.pick_a_word(words[1])
+
+        say(word)
+
+        result=game.check(word)
+        if not result[0]:
+            game = None
+            say(result[1]+'貴方の勝ちです。おめでとうございます！')
+            return
+
+        say('では、貴方のターンです。')
 '''
     for the test
 '''
