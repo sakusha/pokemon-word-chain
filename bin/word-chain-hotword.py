@@ -29,7 +29,7 @@ from google.assistant.library import Assistant
 from google.assistant.library.event import EventType
 from google.assistant.library.file_helpers import existing_file
 
-from word_chain_actions import my_actions
+import my_actions as my_actions
 
 
 
@@ -72,7 +72,7 @@ def process_event(assistant, event, device_id):
 
     elif event.type == EventType.ON_RECOGNIZING_SPEECH_FINISHED and event.args:
         print('You said:', event.args['text'])
-        my_actions(assistant, event, device_id)
+        my_actions.my_actions(assistant, event, device_id)
 
     elif event.type == EventType.ON_DEVICE_ACTION:
         for command, params in process_device_actions(event, device_id):
